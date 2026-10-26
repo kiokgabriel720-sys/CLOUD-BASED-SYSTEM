@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Alerts{% endblock %}
+{% block heading %}Faults &amp; alerts{% endblock %}
+{% block sub %}Alerts are raised automatically when a device goes silent or a metric crosses its threshold{% endblock %}
+{% block content %}
+<div class="card">
+  <form class="filters">
+    <select name="status">{% for v, l in [('active','Active (open + acknowledged)'),('open','Open'),('acknowledged','Acknowledged'),('resolved','Resolved'),('all','All')] %}<option value="{{ v }}" {{ 'selected' if v == status }}>{{ l }}</option>{% endfor %}</select>
+    <select name="severity"><option value="">All severities</option>{% for s in ['critical','warning','info'] %}<option value="{{ s }}" {{ 'selected' if s == severity }}>{{ s|capitalize }}</option>{% endfor %}</select>
+    <button class="btn">Apply</button>
+  </form>
+  <table>
+    <thead><tr><th>#</th><th>Severity</th><th>Device</th><th>Type</th><th>Message</th><th>Status</th><th>Raised</th><th></th></tr></thead>
+    <tbody>
+    {% for a in alerts %}
+      <tr><td>{{ a.id }}</td><td><span class="pill {{ a.severity }}">{{ a.severity }}</span></td>
+        <td><a href="{{ url_for('main.device_detail', device_id=a.device_id) }}">{{ a.device.name }}</a></td>
+        <td>{{ a.alert_type }}</td><td>{{ a.message }}{% if a.acknowledger %}<div class="muted">Acknowledged by {{ a.acknowledger.full_name }}</div>{% endif %}</td>
+        <td><span class="pill {{ a.status }}">{{ a.status }}</span></td>
+        <td class="muted" style="white-space:nowrap">{{ a.created_at|localtime }}</td>
+        <td><div class="actions">
+          {% if a.status == 'open' %}<form method="post" action="{{ url_for('main.alert_action', alert_id=a.id, action='acknowledge') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn sm">Acknowledge</button></form>{% endif %}
+          {% if a.status != 'resolved' and current_user.role in ['admin','network_admin'] %}<form method="post" action="{{ url_for('main.alert_action', alert_id=a.id, action='resolve') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn sm">Resolve</button></form>{% endif %}
+        </div></td></tr>
+    {% else %}<tr><td colspan="8" class="empty">No alerts match the selected filters.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

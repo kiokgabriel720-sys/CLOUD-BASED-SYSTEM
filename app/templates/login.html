@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · CloudNMS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="login-wrap">
+  <section class="login-hero">
+    <div class="brand" style="border:0;padding:0"><div class="logo">☁</div><div>CloudNMS<small>Cloud-Based Network Management System</small></div></div>
+    <h1>One console for every device on your network.</h1>
+    <ul>
+      <li>Live availability of routers, switches, firewalls and servers</li>
+      <li>CPU, memory, latency and bandwidth trends</li>
+      <li>Automatic fault detection and alerts</li>
+      <li>Availability, performance and alert reports</li>
+    </ul>
+  </section>
+  <section class="login-panel">
+    <div class="login-box">
+      <h2>Sign in</h2>
+      <div class="muted">Authorised administrators only</div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}<div class="flash {{ cat }}" style="margin-top:16px">{{ msg }}</div>{% endfor %}
+      {% endwith %}
+      {% if default_login %}
+      <div class="flash warning" style="margin-top:16px">
+        <b>First-time login</b><br>
+        Username: <span class="mono">{{ default_login[0] }}</span><br>
+        Password: <span class="mono">{{ default_login[1] }}</span><br>
+        <span style="font-weight:400">Change this password from <i>Profile</i> after signing in – this notice then disappears.</span>
+      </div>
+      {% endif %}
+      <form method="post" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Username<input name="username" value="{{ username or '' }}" required autofocus></label>
+        <label>Password<input name="password" type="password" required></label>
+        <label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" name="remember" style="width:auto"> Keep me signed in on this device</label>
+        <button class="btn primary">Sign in</button>
+      </form>
+      <div class="foot">Accounts lock for 15 minutes after 5 failed attempts. All sign-in activity is recorded in the audit log.</div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

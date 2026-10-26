@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Thresholds{% endblock %}
+{% block heading %}Alert thresholds{% endblock %}
+{% block sub %}A metric at or above a threshold raises a warning or critical alert; it resolves automatically when the value returns to normal{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for s in settings %}<label>{{ s.description }}<input name="{{ s.key }}" type="number" step="0.1" min="0" value="{{ '%g'|format(s.value) }}"></label>{% endfor %}
+    <div class="full"><button class="btn primary">Save thresholds</button></div>
+  </form>
+</div>
+{% endblock %}

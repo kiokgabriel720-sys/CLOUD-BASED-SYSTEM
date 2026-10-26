@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ device.name }}{% endblock %}
+{% block heading %}{{ device.name }} <span class="pill {{ device.status }}" style="vertical-align:middle;font-size:13px">{{ device.status }}</span>{% endblock %}
+{% block sub %}{{ device.device_type }} · <span class="mono">{{ device.ip_address }}</span> · {{ device.location or 'no location' }}{% endblock %}
+{% block content %}
+{% set t = latest %}
+<div class="grid two">
+  <div class="card"><h2>Current performance <span class="muted" style="font-weight:400;font-size:12px">last sample {{ t.recorded_at|ago if t else 'never' }}</span></h2>
+    <div class="metric-tiles">
+      {% for label, val, unit, warn, crit in [('CPU', t.cpu_usage if t else none, '%', 80, 90), ('Memory', t.memory_usage if t else none, '%', 80, 92), ('Link utilisation', t.bandwidth_usage if t else none, '%', 80, 95), ('Latency', t.latency_ms if t else none, ' ms', 100, 250), ('Packet loss', t.packet_loss if t else none, '%', 2, 10)] %}
+      <div class="t"><span class="muted">{{ label }}</span><b>{{ ('%.1f'|format(val)) ~ unit if val is not none else '—' }}</b>
+        {% if val is not none %}<div class="gauge {{ 'c' if val >= crit else ('w' if val >= warn else '') }}"><i style="width:{{ [val / (crit * 1.1) * 100, 100]|min }}%"></i></div>{% endif %}</div>
+      {% endfor %}
+    </div>
+    <div class="grid half" style="margin-top:16px">
+      <div><div class="muted" style="margin-bottom:6px">CPU &amp; memory (24 h)</div><div class="chart-box sm"><canvas id="c1"></canvas></div></div>
+      <div><div class="muted" style="margin-bottom:6px">Latency &amp; link utilisation (24 h)</div><div class="chart-box sm"><canvas id="c2"></canvas></div></div>
+    </div>
+  </div>
+  <div class="card"><h2>Device details</h2>
+    <dl class="kv">
+      <dt>Vendor / model</dt><dd>{{ device.vendor or '—' }}</dd>
+      <dt>Management port</dt><dd>{{ device.mgmt_port }}</dd>
+      <dt>Monitoring</dt><dd>{{ 'Active' if device.monitored else 'Paused' }}</dd>
+      <dt>Last heartbeat</dt><dd>{{ device.last_seen|localtime }} ({{ device.last_seen|ago }})</dd>
+      <dt>Registered</dt><dd>{{ device.created_at|localtime('%d %b %Y') }}</dd>
+    </dl>
+    {% if current_user.role in ['admin','network_admin'] %}
+    <div style="margin-top:14px" class="muted">Agent API key</div>
+    <div class="key mono">{{ device.api_key }}</div>
+    <div class="actions" style="margin-top:14px">
+      <form method="post" action="{{ url_for('main.poll', device_id=device.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn primary sm">Poll now</button></form>
+      <a class="btn sm" href="{{ url_for('main.edit_device', device_id=device.id) }}">Edit</a>
+      <form method="post" action="{{ url_for('main.toggle_device', device_id=device.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn sm">{{ 'Pause monitoring' if device.monitored else 'Resume monitoring' }}</button></form>
+      {% if current_user.role == 'admin' %}
+      <form method="post" action="{{ url_for('main.regenerate_key', device_id=device.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn sm">Rotate key</button></form>
+      <form method="post" action="{{ url_for('main.delete_device', device_id=device.id) }}" onsubmit="return confirm('Delete {{ device.name }} and all its history?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn danger sm">Delete</button></form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+<div class="card" style="margin-top:16px"><h2>Recent alerts for this device</h2>
+  <table><thead><tr><th>#</th><th>Severity</th><th>Type</th><th>Message</th><th>Status</th><th>Raised</th><th>Resolved</th></tr></thead><tbody>
+  {% for a in alerts %}<tr><td>{{ a.id }}</td><td><span class="pill {{ a.severity }}">{{ a.severity }}</span></td><td>{{ a.alert_type }}</td><td>{{ a.message }}</td>
+    <td><span class="pill {{ a.status }}">{{ a.status }}</span></td><td class="muted">{{ a.created_at|localtime }}</td><td class="muted">{{ a.resolved_at|localtime }}</td></tr>
+  {% else %}<tr><td colspan="7" class="empty">No alerts recorded for this device.</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+fetch('{{ url_for("api.device_metrics", device_id=device.id) }}?hours=24').then(r => r.json()).then(d => {
+  const lab = d.points.map(p => new Date(p.t).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
+  const opts = {animation: false, maintainAspectRatio: false, plugins: {legend: {position: 'bottom'}}, scales: {x: {ticks: {maxTicksLimit: 8}}}};
+  const line = (label, key, color, axis) => ({label, data: d.points.map(p => p[key]), borderColor: color, pointRadius: 0, borderWidth: 1.6, tension: .25, yAxisID: axis || 'y'});
+  new Chart(document.getElementById('c1'), {type: 'line', data: {labels: lab, datasets: [line('CPU %', 'cpu', '#0e7c86'), line('Memory %', 'memory', '#6b46c1')]},
+    options: {...opts, scales: {...opts.scales, y: {min: 0, max: 100}}}});
+  new Chart(document.getElementById('c2'), {type: 'line', data: {labels: lab, datasets: [line('Latency ms', 'latency', '#d23c3c'), line('Link %', 'bandwidth', '#d98b00', 'y1')]},
+    options: {...opts, scales: {...opts.scales, y: {min: 0}, y1: {position: 'right', min: 0, max: 100, grid: {drawOnChartArea: false}}}}});
+});
+</script>
+{% endblock %}

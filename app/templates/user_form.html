@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if user else 'Add' }} user{% endblock %}
+{% block heading %}{{ 'Edit ' ~ user.full_name if user else 'Add a user' }}{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Full name<input name="full_name" value="{{ form.get('full_name') or '' }}" required></label>
+    <label>Username<input name="username" value="{{ form.get('username') or '' }}" required></label>
+    <label>Email<input name="email" type="email" value="{{ form.get('email') or '' }}" required></label>
+    <label>Role<select name="role">{% for k, v in roles.items() %}<option value="{{ k }}" {{ 'selected' if form.get('role') == k }}>{{ v }}</option>{% endfor %}</select></label>
+    <label class="full">Password<input name="password" type="password" {{ '' if user else 'required' }}><span class="help">{{ 'Leave blank to keep the current password. ' if user }}Minimum 8 characters mixing letters and numbers.</span></label>
+    <div class="full actions"><button class="btn primary">Save user</button><a class="btn" href="{{ url_for('main.users') }}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

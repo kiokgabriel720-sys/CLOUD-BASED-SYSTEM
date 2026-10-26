@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block heading %}Audit log{% endblock %}
+{% block sub %}Security and administrative events (passwords and API keys are never recorded){% endblock %}
+{% block content %}
+<div class="card">
+  <form class="filters"><select name="action"><option value="">All events</option>{% for a in ['LOGIN','DEVICE','ALERT','USER','REPORT','AUTHZ','API'] %}<option {{ 'selected' if a == action }}>{{ a }}</option>{% endfor %}</select><button class="btn">Filter</button></form>
+  <table><thead><tr><th>Time</th><th>User</th><th>Event</th><th>Details</th><th>Source IP</th></tr></thead><tbody>
+  {% for l in logs %}<tr><td class="muted" style="white-space:nowrap">{{ l.timestamp|localtime('%d %b %Y %H:%M:%S') }}</td><td>{{ l.user.username if l.user else '—' }}</td>
+    <td><span class="pill {{ 'critical' if 'FAIL' in l.action or 'DENIED' in l.action or 'LOCK' in l.action else 'info' }}">{{ l.action }}</span></td><td>{{ l.details }}</td><td class="mono">{{ l.ip_address or '—' }}</td></tr>
+  {% else %}<tr><td colspan="5" class="empty">No events recorded.</td></tr>{% endfor %}</tbody></table>
+</div>
+{% endblock %}

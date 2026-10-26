@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block heading %}User management{% endblock %}
+{% block sub %}Role-based access: administrators manage everything, network administrators manage devices and alerts, technicians have read access{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="filters"><a class="btn primary" href="{{ url_for('main.user_form') }}">+ Add user</a></div>
+  <table><thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>
+  {% for u in users %}<tr><td><b>{{ u.full_name }}</b></td><td class="mono">{{ u.username }}</td><td>{{ u.email }}</td><td>{{ u.role_label }}</td>
+    <td><span class="pill {{ 'online' if u.active else 'unknown' }}">{{ 'active' if u.active else 'inactive' }}</span></td>
+    <td class="muted">{{ u.last_login|localtime }}</td>
+    <td><div class="actions"><a class="btn sm" href="{{ url_for('main.user_form', user_id=u.id) }}">Edit</a>
+      {% if u.id != current_user.id %}<form method="post" action="{{ url_for('main.toggle_user', user_id=u.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn sm {{ 'danger' if u.active }}">{{ 'Deactivate' if u.active else 'Activate' }}</button></form>{% endif %}</div></td></tr>
+  {% endfor %}</tbody></table>
+</div>
+{% endblock %}

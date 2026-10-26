@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Network overview{% endblock %}
+{% block sub %}Live status of {{ total }} monitored devices · refreshed {{ now_label if now_label else 'on page load' }}{% endblock %}
+{% block content %}
+<div class="grid cards">
+  <div class="card stat"><div class="label">Monitored devices</div><div class="value">{{ total }}</div><div class="hint">{{ availability }}% reachable</div></div>
+  <div class="card stat ok"><div class="label">Online</div><div class="value">{{ counts.online }}</div><div class="hint">healthy</div></div>
+  <div class="card stat warn"><div class="label">Degraded</div><div class="value">{{ counts.warning }}</div><div class="hint">threshold exceeded</div></div>
+  <div class="card stat crit"><div class="label">Offline</div><div class="value">{{ counts.offline }}</div><div class="hint">no heartbeat</div></div>
+  <div class="card stat {{ 'crit' if critical_open else '' }}"><div class="label">Active alerts</div><div class="value">{{ open_alert_count }}</div><div class="hint">{{ critical_open }} critical · {{ alerts_24h }} in 24 h</div></div>
+</div>
+
+<div class="grid two" style="margin-top:16px">
+  <div class="card"><h2>Network performance – last 24 hours <span class="muted" style="font-weight:400;font-size:12px">hourly average, all devices</span></h2>
+    <div class="chart-box"><canvas id="trend"></canvas></div></div>
+  <div class="card"><h2>Device status</h2><div class="chart-box"><canvas id="status"></canvas></div></div>
+</div>
+
+<div class="grid half" style="margin-top:16px">
+  <div class="card"><h2>Active alerts <a class="btn sm" href="{{ url_for('main.alerts') }}">View all</a></h2>
+    <table><thead><tr><th>Severity</th><th>Device</th><th>Message</th><th>Raised</th></tr></thead><tbody>
+    {% for a in recent_alerts %}
+      <tr><td><span class="pill {{ a.severity }}">{{ a.severity }}</span></td>
+          <td><a href="{{ url_for('main.device_detail', device_id=a.device_id) }}">{{ a.device.name }}</a></td>
+          <td>{{ a.message }}</td><td class="muted">{{ a.created_at|ago }}</td></tr>
+    {% else %}<tr><td colspan="4" class="empty">No active alerts – all systems normal.</td></tr>{% endfor %}
+    </tbody></table></div>
+  <div class="card"><h2>Devices needing attention <a class="btn sm" href="{{ url_for('main.devices') }}">All devices</a></h2>
+    <table><thead><tr><th>Device</th><th>IP address</th><th>Status</th><th>Last seen</th></tr></thead><tbody>
+    {% for d in problem_devices %}
+      <tr><td><a href="{{ url_for('main.device_detail', device_id=d.id) }}">{{ d.name }}</a><div class="muted">{{ d.device_type }} · {{ d.location or '' }}</div></td>
+          <td class="mono">{{ d.ip_address }}</td><td><span class="pill {{ d.status }}">{{ d.status }}</span></td><td class="muted">{{ d.last_seen|ago }}</td></tr>
+    {% else %}<tr><td colspan="4" class="empty">Every device is healthy.</td></tr>{% endfor %}
+    </tbody></table></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const counts = {{ counts|tojson }};
+new Chart(document.getElementById('status'), {type: 'doughnut',
+  data: {labels: ['Online', 'Degraded', 'Offline', 'Unknown'],
+    datasets: [{data: [counts.online, counts.warning, counts.offline, counts.unknown],
+      backgroundColor: ['#1f9d55', '#d98b00', '#d23c3c', '#8792a6'], borderWidth: 2}]},
+  options: {animation: false, maintainAspectRatio: false, cutout: '62%', plugins: {legend: {position: 'bottom'}}}});
+fetch('{{ url_for("api.summary") }}?hours=24').then(r => r.json()).then(d => {
+  const lab = d.trend.map(p => new Date(p.t).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
+  new Chart(document.getElementById('trend'), {type: 'line', data: {labels: lab, datasets: [
+    {label: 'CPU %', data: d.trend.map(p => p.cpu), borderColor: '#0e7c86', tension: .3, pointRadius: 0, yAxisID: 'y'},
+    {label: 'Memory %', data: d.trend.map(p => p.memory), borderColor: '#6b46c1', tension: .3, pointRadius: 0, yAxisID: 'y'},
+    {label: 'Link utilisation %', data: d.trend.map(p => p.bandwidth), borderColor: '#d98b00', tension: .3, pointRadius: 0, yAxisID: 'y'},
+    {label: 'Latency (ms)', data: d.trend.map(p => p.latency), borderColor: '#d23c3c', borderDash: [5, 4], tension: .3, pointRadius: 0, yAxisID: 'y1'}]},
+    options: {animation: false, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      scales: {y: {min: 0, max: 100, title: {display: true, text: '%'}}, y1: {position: 'right', min: 0, grid: {drawOnChartArea: false}, title: {display: true, text: 'ms'}}},
+      plugins: {legend: {position: 'bottom'}}}});
+});
+</script>
+{% endblock %}

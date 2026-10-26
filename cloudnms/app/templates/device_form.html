@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if device else 'Add' }} device{% endblock %}
+{% block heading %}{{ 'Edit ' ~ device.name if device else 'Register a network device' }}{% endblock %}
+{% block sub %}Devices report to the cloud through the CloudNMS agent or are probed on their management port{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Device name<input name="name" value="{{ form.get('name') or '' }}" required maxlength="100" placeholder="e.g. Core Router"></label>
+    <label>IP address<input name="ip_address" value="{{ form.get('ip_address') or '' }}" required placeholder="e.g. 10.10.0.1"><span class="help">IPv4 or IPv6 – must be unique</span></label>
+    <label>Device type<select name="device_type" required><option value="">Select…</option>
+      {% for t in device_types %}<option {{ 'selected' if form.get('device_type') == t }}>{{ t }}</option>{% endfor %}</select></label>
+    <label>Vendor / model<input name="vendor" value="{{ form.get('vendor') or '' }}" placeholder="e.g. MikroTik CCR2004"></label>
+    <label>Location<input name="location" value="{{ form.get('location') or '' }}" placeholder="e.g. Server room, Block A"></label>
+    <label>Management port<input name="mgmt_port" type="number" min="1" max="65535" value="{{ form.get('mgmt_port') or 22 }}"><span class="help">Used for on-demand TCP reachability probes</span></label>
+    <div class="full actions"><button class="btn primary">{{ 'Save changes' if device else 'Register device' }}</button>
+      <a class="btn" href="{{ url_for('main.device_detail', device_id=device.id) if device else url_for('main.devices') }}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}
